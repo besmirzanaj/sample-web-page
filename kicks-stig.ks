@@ -3,7 +3,8 @@
 
 #
 #CentOS 7 STIG Kickstart
-#Oct 2017
+#Oct 2019
+# Adaptations by bzanaj
 #
 # Keyboard layouts
 keyboard 'us'
@@ -21,11 +22,11 @@ firewall --service=ssh
 # System authorization information
 auth  --useshadow  --passalgo=sha512
 # Use graphical install
-graphical
+text
 # SELinux configuration
 selinux --enforcing
 # Network information
-network  --bootproto=dhcp --device=eth0 --hostname=CHANGEME --activate
+network  --bootproto=dhcp --device=eth0 --hostname=server.example.com --activate
 # System timezone
 timezone America/Chicago
 # System bootloader configuration
@@ -50,23 +51,12 @@ firstboot --disable
 reboot --eject
 
 %packages
-@^graphical-server-environment
 @base
 @core
-@desktop-debugging
-@dial-up
-@fonts
-@gnome-desktop
 @guest-agents
-@guest-desktop-agents
 @hardware-monitoring
 @input-methods
-@internet-browser
-@multimedia
-@print-client
 @security-tools
-@x11
-@xfce
 esc
 kexec-tools
 openscap
@@ -74,12 +64,9 @@ openscap-scanner
 openssh-server
 pam_pkcs11
 scap-security-guide
-screen
-clamav
 scap-workbench
 sssd
 aide
-libreoffice
 -rsh-server
 -telnet-server
 -tftp-server
@@ -115,7 +102,7 @@ touch /etc/dconf/db/local.d/01-banner-message
 cat << EOF > /etc/dconf/db/local.d/01-banner-message
 [org/gnome/login-screen]
 banner-message-enable=true
-banner-message-text="                                                   DSS Accredited Non-DoD System Warning Banner\n----------------------------------------------------------------------------------------------------------------------------- \n Use of this or any other DoD interest computer system constitutes consent to monitoring at all times.\n \nThis is a DoD interest computer system. All DoD interest computer systems and related equipment are intended for the communication, transmission, processing, and storage of official U.S. Government or other authorized information only. All DoD interest computer systems are subject to monitoring at all times to ensure proper functioning of equipment and systems including security devices and systems, to prevent unauthorized use and violations of statutes and security regulations, to deter criminal activity, and for other similar purposes. Any user of a DoD interest computer system should be aware that any information placed in the system is subject to monitoring and is not subject to any expectation of privacy. If monitoring of this or any other DoD interest computer system reveals possible evidence of violation of criminal statutes, this evidence and any other related information, including identification information about the user, may be provided to law enforcement officials. If monitoring of this or any other DoD interest computer systems reveals violations of security regulations or unauthorized use, employees who violate security regulations or make unauthorized use of DoD interest computer systems are subject to appropriate disciplinary action.\n \nUse of this or any other DoD interest computer system constitutes consent to monitoring at all times.\n----------------------------------------------------------------------------------------------------------------------------- "
+banner-message-text="This is a banner message\n authorized use only"
 disable-user-list=true
 EOF
 
@@ -128,35 +115,6 @@ Use of this or any other interest computer system constitutes consent to monitor
 ----------------------------------------------------------------------------------------------------
 EOF
 
-# Set Screensaver settings and Session locks
-touch /etc/dconf/db/local.d/10-scap-security-guide
-cat << EOF > /etc/dconf/db/local.d/10-scap-security-guide
-[org/gnome/desktop/session]
-idle-delay=uint32 900
-
-[org/gnome/desktop/screensaver]
-idle_activation_enabled=true
-
-[org/gnome/desktop/screensaver]
-lock-enabled=true
-lock-delay=uint32 0
-EOF
-
-touch /etc/dconf/db/local.d/locks/session
-cat << EOF > /etc/dconf/db/local.d/locks/session
-/org/gnome/desktop/session/idle-delay
-EOF
-
-touch /etc/dconf/db/local.d/locks/screensaver
-cat << EOF > touch /etc/dconf/db/local.d/locks/screensaver
-/org/gnome/desktop/screensaver/idle-activation-enabled
-
-/org/gnome/desktop/screensaver/lock-enabled
-
-/org/gnome/desktop/screensaver/lock-delay
-EOF
-
-#dconf update
 dconf update
 
 echo "session required pam_lastlog.so showfailed" >> /etc/pam.d/postlogin-ac
@@ -207,17 +165,12 @@ cat << EOF >> /etc/yum.conf
 # Configure the operating system to verify the signature of local packages prior to install
 localpkg_gpgcheck=1
 # Configure the operating system to verify the repository metadata
+# be sure to import epel key before installing it
 repo_gpgcheck=1
 # Configure the operating system to remove all software components after updated versions have been installed
 clean_requirements_on_remove=1
 EOF
 
-# Add the setting to disable the Ctrl-Alt_Delete sequence for GNOME (not installed by default)
-touch /etc/dconf/db/local.d/00-disable-CAD
-cat << EOF > /etc/dconf/db/local.d/00-disable-CAD
-[org/gnome/settings-daemon/plugins/media-keys] 
-logout=''
-EOF
 
 # ==== configure login.defs ====
 sed -ie 's/PASS_MAX_DAYS.*/PASS_MAX_DAYS\t60/' /etc/login.defs
@@ -249,8 +202,8 @@ EOF
 echo -e "install net-pf-31 /bin/false" >> /etc/modprobe.d/bluetooth.conf
 echo -e "install bluetooth /bin/false" >> /etc/modprobe.d/bluetooth.conf
 
-# Disable IPv6
-echo -e "options ipv6 disable=1" >> /etc/modprobe.d/ipv6.conf
+# Optional Disable IPv6
+#echo -e "options ipv6 disable=1" >> /etc/modprobe.d/ipv6.conf
 
 # Set Permissions and User/Group Owner on /etc/grub.conf 
 chown root:root /boot/grub2/grub.cfg
@@ -275,11 +228,6 @@ systemctl disable kdump.service
 #Configure Notification of Post-AIDE Scan Details
 echo '05 4 * * * root /usr/sbin/aide --check | /bin/mail -s "$(hostname) - AIDE Integrity Check" root@localhost' >> /etc/crontab
 
-#Disable GDM Automatic Login
-sed -i '/\[daemon]/a AutomaticLoginEnable=false' /etc/gdm/custom.conf
-
-#Disable GDM Guest Login
-sed -i '/\[daemon]/a TimedLoginEnable=false' /etc/gdm/custom.conf
 
 #Disable Ctrl+Alt+Del Reboot
 systemctl mask ctrl-alt-del.target
