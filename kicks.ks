@@ -1,5 +1,6 @@
 # add in the kernel boot
-# inst.ks=http://benelux.ga/kicks.ks
+# inst.ks=http://ansible.live/kicks.ks
+
 
 lang en_US
 keyboard us
